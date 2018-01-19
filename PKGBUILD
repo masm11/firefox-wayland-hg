@@ -24,7 +24,7 @@ conflicts=(firefox)
 provides=(firefox)
 source=("$_name::hg+https://hg.mozilla.org/mozilla-central/"
         firefox.desktop firefox-symbolic.svg
-        firefox-install-dir.patch fix-wifi-scanner.diff cppopts.diff alt-key.diff nsClipboardWayland.cpp)
+        firefox-install-dir.patch fix-wifi-scanner.diff cppopts.diff alt-key.diff clipboard.diff)
 sha256sums=('SKIP'
             'ada313750e6fb14558b37c764409a17c1672a351a46c73b350aa1fe4ea9220ef'
             'a2474b32b9b2d7e0fb53a4c89715507ad1c194bef77713d798fa39d507def9e9'
