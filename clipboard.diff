@@ -1,0 +1,140 @@
+--- widget/gtk/nsClipboardWayland.cpp.org	2018-01-19 21:37:51.012400420 +0900
++++ widget/gtk/nsClipboardWayland.cpp	2018-01-19 23:46:37.967267116 +0900
+@@ -35,6 +35,7 @@
+ #include <gtk/gtk.h>
+ #include <gdk/gdkwayland.h>
+ #include <errno.h>
++#include <time.h>
+ 
+ void
+ nsRetrievalContextWayland::ResetMIMETypeList(void)
+@@ -358,25 +359,117 @@
+     close(pipe_fd[1]);
+     wl_display_flush(mDisplay);
+ 
+-    struct pollfd fds;
+-    fds.fd = pipe_fd[0];
+-    fds.events = POLLIN;
+-
+-    // Choose some reasonable timeout here
+-    int ret = poll(&fds, 1, kClipboardTimeout / 1000);
+-    if (!ret || ret == -1) {
+-        close(pipe_fd[0]);
+-        return nullptr;
+-    }
+-
+     GIOChannel *channel = g_io_channel_unix_new(pipe_fd[0]);
+     GError* error = nullptr;
+     gchar *clipboardData = nullptr;
+     gsize  dataLength = 0;
+ 
+     g_io_channel_set_encoding(channel, nullptr, &error);
++    // Mark to store data directly into our buffer.
++    // Without this, gio tries to fill its buffer multiple times, and is blocked.
++    g_io_channel_set_buffered(channel, FALSE);
++
+     if (!error) {
+-        g_io_channel_read_to_end(channel, &clipboardData, &dataLength, &error);
++        struct timespec timeout_at; // deadline
++        gint cap = 256;
++        gint siz = 0;
++        gchar *buf = reinterpret_cast<gchar *>(g_malloc(cap));
++
++        clock_gettime(CLOCK_MONOTONIC, &timeout_at);
++        // Choose some reasonable timeout here
++        if ((timeout_at.tv_nsec += (long) kClipboardTimeout * 1000) >= 1000000000) {
++            long sec, nsec;
++            sec = timeout_at.tv_nsec / 1000000000, nsec = timeout_at.tv_nsec % 1000000000;
++            timeout_at.tv_sec += sec;
++            timeout_at.tv_nsec = nsec;
++        }
++
++        /* In order to make it possible to receive data from this process itself,
++         * do that with Gtk iteration.
++         */
++        while (TRUE) {
++            struct pollfd fds[2];
++            fds[0].fd = pipe_fd[0];
++            fds[0].events = POLLIN;
++            fds[1].fd = wl_display_get_fd(mDisplay);
++            fds[1].events = POLLIN;
++
++            struct timespec now;
++            clock_gettime(CLOCK_MONOTONIC, &now);
++            if (now.tv_sec > timeout_at.tv_sec ||
++                    (now.tv_sec == timeout_at.tv_sec && now.tv_nsec >= timeout_at.tv_nsec)) {
++                // timeout_at is past.
++                g_free(buf);
++                g_io_channel_unref(channel);
++                close(pipe_fd[0]);
++                return nullptr;
++            }
++            int msec = (timeout_at.tv_sec - now.tv_sec) * 1000 + (timeout_at.tv_nsec - now.tv_nsec) / 1000000;
++            if (msec < 0) {  // For safety.
++                g_free(buf);
++                g_io_channel_unref(channel);
++                close(pipe_fd[0]);
++                return nullptr;
++            }
++
++            int ret = poll(fds, 2, msec);
++            if (!ret || ret == -1) {
++                // Timeout or error.
++                g_free(buf);
++                g_io_channel_unref(channel);
++                close(pipe_fd[0]);
++                return nullptr;
++            }
++
++            if (fds[0].revents & (POLLIN | POLLHUP)) {
++                // Selection data is ready.
++                gsize s;
++                GIOStatus r = g_io_channel_read_chars(channel, buf + siz, cap - siz, &s, &error);
++                switch (r) {
++                case G_IO_STATUS_NORMAL:
++                    break;
++                case G_IO_STATUS_EOF:
++                    s = 0;
++                    break;
++                case G_IO_STATUS_AGAIN:  // Should not happen.
++                default:
++                    g_free(buf);
++                    g_io_channel_unref(channel);
++                    close(pipe_fd[0]);
++                    if (error) {
++                        NS_WARNING(
++                                nsPrintfCString("Unexpected error when reading clipboard data: %s",
++                                        error->message).get());
++                        g_error_free(error);
++                    }
++                    return nullptr;
++                }
++                if (s == 0) {
++                    // EOF reached.
++                    clipboardData = buf;
++                    dataLength = siz;
++                    break;
++                }
++                if ((siz += s) >= cap) {
++                    // Enlarge buffer.
++                    cap += cap / 2;
++                    buf = reinterpret_cast<gchar *>(g_realloc(buf, cap));
++                }
++            }
++
++            if (fds[1].revents & POLLHUP) {
++                // Connection to display server is closed?
++                g_free(buf);
++                g_io_channel_unref(channel);
++                close(pipe_fd[0]);
++                return nullptr;
++            }
++
++            if (fds[1].revents & POLLIN) {
++                // Events from display server is ready.
++                gtk_main_iteration();
++            }
++        }
+     }
+ 
+     if (error) {

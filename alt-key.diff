@@ -1,0 +1,11 @@
+--- widget/gtk/nsGtkKeyUtils.cpp.org	2018-01-19 19:35:41.467911910 +0900
++++ widget/gtk/nsGtkKeyUtils.cpp	2018-01-19 19:36:32.574735244 +0900
+@@ -196,6 +196,8 @@
+ 
+     if (GDK_IS_X11_DISPLAY(gdk_display_get_default()))
+         InitBySystemSettings();
++    else
++	mModifierMasks[INDEX_ALT] = 1 << 3;
+ 
+     gdk_window_add_filter(nullptr, FilterEvents, this);
+ 

@@ -1,0 +1,11 @@
+--- media/webrtc/trunk/gtest/moz.build.old	2018-01-15 21:06:42.408073213 +0900
++++ media/webrtc/trunk/gtest/moz.build	2018-01-15 22:43:05.923488402 +0900
+@@ -558,7 +558,7 @@
+ 
+     if CONFIG['CC_TYPE'] in ('clang', 'gcc'):
+         CXXFLAGS += [
+-            '-Wno-inconsistent-missing-override',
++            #'-Wno-inconsistent-missing-override',
+             '-Wno-overloaded-virtual',
+         ]
+         if CONFIG['CC_TYPE'] == 'clang':
