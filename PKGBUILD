@@ -4,8 +4,8 @@
 # Contributor: Jakub Schmidtke <sjakub@gmail.com>
 
 _name=firefox
-pkgname=$_name-hg
-pkgver=r399981+.6ffbba9ce0ef+
+pkgname=$_name-wayland-hg
+pkgver=r399986+.6bb6f3b25f9f+
 pkgrel=1
 pkgdesc="Standalone web browser from mozilla.org"
 arch=(i686 x86_64)
