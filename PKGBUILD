@@ -5,7 +5,7 @@
 
 _name=firefox
 pkgname=$_name-wayland-hg
-pkgver=r399986+.6bb6f3b25f9f+
+pkgver=r400482+.0e62eb7804c0+
 pkgrel=1
 pkgdesc="Standalone web browser from mozilla.org"
 arch=(i686 x86_64)
@@ -24,13 +24,13 @@ conflicts=(firefox)
 provides=(firefox)
 source=("$_name::hg+https://hg.mozilla.org/mozilla-central/"
         firefox.desktop firefox-symbolic.svg
-        firefox-install-dir.patch fix-wifi-scanner.diff cppopts.diff alt-key.diff clipboard.diff)
+        firefox-install-dir.patch fix-wifi-scanner.diff cppopts.diff alt-key.diff clipboard.diff gl.diff)
 sha256sums=('SKIP'
-            'ada313750e6fb14558b37c764409a17c1672a351a46c73b350aa1fe4ea9220ef'
+            '41543e124da0f8939c8db923ff796997cad5fa074f94c697ea83803a408c2931'
             'a2474b32b9b2d7e0fb53a4c89715507ad1c194bef77713d798fa39d507def9e9'
             'd86e41d87363656ee62e12543e2f5181aadcff448e406ef3218e91865ae775cd'
             '9765bca5d63fb5525bbd0520b7ab1d27cabaed697e2fc7791400abc3fa4f13b8'
-            'SKIP' 'SKIP' 'SKIP')
+            'SKIP' 'SKIP' 'SKIP' 'SKIP')
 validpgpkeys=('2B90598A745E992F315E22C58AB132963A06537A')
 
 # Google API keys (see http://www.chromium.org/developers/how-tos/api-keys)
@@ -63,6 +63,7 @@ prepare() {
   patch -Np0 -i ../cppopts.diff
   patch -Np0 -i ../alt-key.diff
   patch -Np0 -i ../clipboard.diff
+  patch -Np0 -i ../gl.diff
 
   echo -n "$_google_api_key" >google-api-key
   echo -n "$_mozilla_api_key" >mozilla-api-key
